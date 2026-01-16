@@ -13,6 +13,7 @@ using Squidex.Domain.Apps.Entities.Contents.Repositories;
 using Squidex.Domain.Apps.Entities.Contents.Text.State;
 using Squidex.Domain.Apps.Entities.MongoDb;
 using Squidex.Infrastructure;
+using System.Runtime.CompilerServices;
 
 namespace Squidex.Domain.Apps.Entities.Contents.Text;
 
@@ -44,9 +45,7 @@ public sealed class MongoTextIndexerState(
     async Task IDeleter.DeleteAppAsync(App app,
         CancellationToken ct)
     {
-        var ids =
-            contentRepository.StreamIds(app.Id, null, SearchScope.All, ct)
-                .Select(x => new UniqueContentId(app.Id, x));
+        var ids = ToUniqueIds(contentRepository.StreamIds(app.Id, null, SearchScope.All, ct), app.Id, ct);
 
         await DeleteInBatchesAsync(ids, ct);
     }
@@ -54,9 +53,7 @@ public sealed class MongoTextIndexerState(
     async Task IDeleter.DeleteSchemaAsync(App app, Schema schema,
         CancellationToken ct)
     {
-        var ids =
-            contentRepository.StreamIds(app.Id, [schema.Id], SearchScope.All, ct)
-                .Select(x => new UniqueContentId(app.Id, x));
+        var ids = ToUniqueIds(contentRepository.StreamIds(app.Id, [schema.Id], SearchScope.All, ct), app.Id, ct);
 
         await DeleteInBatchesAsync(ids, ct);
     }
@@ -69,6 +66,15 @@ public sealed class MongoTextIndexerState(
             var filter = Filter.In(x => x.UniqueContentId, batch);
 
             await Collection.DeleteManyAsync(filter, ct);
+        }
+    }
+
+    private static async IAsyncEnumerable<UniqueContentId> ToUniqueIds(IAsyncEnumerable<DomainId> ids, DomainId appId,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await foreach (var id in ids.WithCancellation(ct))
+        {
+            yield return new UniqueContentId(appId, id);
         }
     }
 

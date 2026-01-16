@@ -8,6 +8,7 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using NodaTime;
+using System.Runtime.CompilerServices;
 
 namespace Squidex.Infrastructure.Log;
 
@@ -63,8 +64,8 @@ public sealed class MongoRequestLogRepository(IMongoDatabase database, IOptions<
         return Collection.DeleteManyAsync(Filter.Eq(x => x.Key, key), ct);
     }
 
-    public IAsyncEnumerable<Request> QueryAllAsync(string key, Instant fromTime, Instant toTime,
-        CancellationToken ct = default)
+    public async IAsyncEnumerable<Request> QueryAllAsync(string key, Instant fromTime, Instant toTime,
+        [EnumeratorCancellation] CancellationToken ct = default)
     {
         Guard.NotNullOrEmpty(key);
 
@@ -75,6 +76,9 @@ public sealed class MongoRequestLogRepository(IMongoDatabase database, IOptions<
                 x.Timestamp <= toTime)
             .ToAsyncEnumerable(ct);
 
-        return documents.Select(x => x.ToRequest());
+        await foreach (var document in documents.WithCancellation(ct))
+        {
+            yield return document.ToRequest();
+        }
     }
 }

@@ -462,7 +462,7 @@ public static class CollectionExtensions
 
                     try
                     {
-                        if (!await e.MoveNextAsync(ct))
+                        if (!await e.MoveNextAsync())
                         {
                             break;
                         }

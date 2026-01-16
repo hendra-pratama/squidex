@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Squidex.Domain.Apps.Core</RootNamespace>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -33,7 +33,6 @@
     <PackageReference Include="Squidex.Messaging.Subscriptions" Version="7.37.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" PrivateAssets="all" />
     <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
-    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
     <PackageReference Include="ValueTaskSupplement" Version="1.1.0" />
   </ItemGroup>
   <ItemGroup>

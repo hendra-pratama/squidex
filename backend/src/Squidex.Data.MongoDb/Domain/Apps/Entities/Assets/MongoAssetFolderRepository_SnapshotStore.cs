@@ -11,6 +11,7 @@ using Squidex.Domain.Apps.Core.Assets;
 using Squidex.Domain.Apps.Entities.Assets;
 using Squidex.Infrastructure;
 using Squidex.Infrastructure.States;
+using System.Runtime.CompilerServices;
 
 #pragma warning disable MA0048 // File name must match type name
 
@@ -24,12 +25,15 @@ public sealed partial class MongoAssetFolderRepository : ISnapshotStore<AssetFol
         return Collection.DeleteManyAsync(Filter.Eq(x => x.IndexedAppId, app.Id), ct);
     }
 
-    IAsyncEnumerable<SnapshotResult<AssetFolder>> ISnapshotStore<AssetFolder>.ReadAllAsync(
-        CancellationToken ct)
+    async IAsyncEnumerable<SnapshotResult<AssetFolder>> ISnapshotStore<AssetFolder>.ReadAllAsync(
+        [EnumeratorCancellation] CancellationToken ct)
     {
         var documents = Collection.Find(FindAll, Batching.Options).ToAsyncEnumerable(ct);
 
-        return documents.Select(x => new SnapshotResult<AssetFolder>(x.DocumentId, x, x.Version, true));
+        await foreach (var document in documents.WithCancellation(ct))
+        {
+            yield return new SnapshotResult<AssetFolder>(document.DocumentId, document, document.Version, true);
+        }
     }
 
     async Task<SnapshotResult<AssetFolder>> ISnapshotStore<AssetFolder>.ReadAsync(DomainId key,

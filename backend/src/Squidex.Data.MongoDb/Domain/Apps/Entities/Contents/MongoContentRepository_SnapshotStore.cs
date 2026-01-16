@@ -12,6 +12,7 @@ using Squidex.Domain.Apps.Core.Schemas;
 using Squidex.Domain.Apps.Entities.Contents;
 using Squidex.Infrastructure;
 using Squidex.Infrastructure.States;
+using System.Runtime.CompilerServices;
 
 #pragma warning disable MA0048 // File name must match type name
 
@@ -19,11 +20,13 @@ namespace Squidex.Domain.Apps.Entities.MongoDb.Contents;
 
 public partial class MongoContentRepository : ISnapshotStore<WriteContent>, IDeleter
 {
-    IAsyncEnumerable<SnapshotResult<WriteContent>> ISnapshotStore<WriteContent>.ReadAllAsync(
-        CancellationToken ct)
+    async IAsyncEnumerable<SnapshotResult<WriteContent>> ISnapshotStore<WriteContent>.ReadAllAsync(
+        [EnumeratorCancellation] CancellationToken ct)
     {
-        return collectionComplete.StreamAll(ct)
-            .Select(x => new SnapshotResult<WriteContent>(x.DocumentId, x.ToState(), x.Version, true));
+        await foreach (var item in collectionComplete.StreamAll(ct).WithCancellation(ct))
+        {
+            yield return new SnapshotResult<WriteContent>(item.DocumentId, item.ToState(), item.Version, true);
+        }
     }
 
     async Task<SnapshotResult<WriteContent>> ISnapshotStore<WriteContent>.ReadAsync(DomainId key,

@@ -124,7 +124,7 @@ public static class Extensions
                     await collection.Find(Builders<MongoContentEntity>.Filter.In(x => x.Id, randomIds))
                         .ToListAsync(ct);
 
-                return documents.Shuffle().ToList();
+                return Squidex.Infrastructure.CollectionExtensions.Shuffle(documents).ToList();
             }
 
             var joined =

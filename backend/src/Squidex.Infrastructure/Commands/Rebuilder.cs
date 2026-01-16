@@ -12,6 +12,7 @@ using Squidex.Events;
 using Squidex.Infrastructure.EventSourcing;
 using Squidex.Infrastructure.States;
 using Squidex.Infrastructure.Tasks;
+using System.Runtime.CompilerServices;
 
 namespace Squidex.Infrastructure.Commands;
 
@@ -48,7 +49,7 @@ public class Rebuilder(
     {
         await ClearAsync<TState>();
 
-        var ids = eventStore.QueryAllAsync(filter, ct: ct).Select(x => x.Data.Headers.AggregateId());
+        var ids = SelectIds(eventStore.QueryAllAsync(filter, ct: ct), ct);
 
         await InsertManyAsync<T, TState>(ids, batchSize, errorThreshold, ct);
     }
@@ -66,7 +67,7 @@ public class Rebuilder(
     {
         Guard.NotNull(source);
 
-        var ids = source.ToAsyncEnumerable();
+        var ids = ToAsyncEnumerable(source, ct);
 
         await InsertManyAsync<T, TState>(ids, batchSize, errorThreshold, ct);
     }
@@ -82,8 +83,7 @@ public class Rebuilder(
 
         using (localCache.StartContext())
         {
-            // Run batch first, because it is cheaper as it has less items.
-            var batches = source.Where(handledIds.Add).Batch(batchSize, ct).Buffered(2, ct);
+            var batches = BatchIds(source, handledIds, batchSize, ct);
 
             await Parallel.ForEachAsync(batches, ct, async (batch, ct) =>
             {
@@ -113,11 +113,58 @@ public class Rebuilder(
             });
         }
 
-        var errorRate = (double)handlerErrors / handledIds.Count;
+        var errorRate = handledIds.Count == 0 ? 0 : (double)handlerErrors / handledIds.Count;
 
         if (errorRate > errorThreshold)
         {
             ThrowHelper.InvalidOperationException($"Error rate of {errorRate} is above threshold {errorThreshold}.");
+        }
+    }
+
+    private static async IAsyncEnumerable<DomainId> SelectIds(IAsyncEnumerable<StoredEvent> source,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await foreach (var item in source.WithCancellation(ct))
+        {
+            yield return item.Data.Headers.AggregateId();
+        }
+    }
+
+    private static async IAsyncEnumerable<DomainId> ToAsyncEnumerable(IEnumerable<DomainId> source,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        foreach (var id in source)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            yield return id;
+        }
+    }
+
+    private static async IAsyncEnumerable<IReadOnlyList<DomainId>> BatchIds(IAsyncEnumerable<DomainId> source, HashSet<DomainId> handledIds, int batchSize,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        var buffer = new List<DomainId>(batchSize);
+
+        await foreach (var id in source.WithCancellation(ct))
+        {
+            if (!handledIds.Add(id))
+            {
+                continue;
+            }
+
+            buffer.Add(id);
+
+            if (buffer.Count >= batchSize)
+            {
+                yield return buffer.ToArray();
+                buffer.Clear();
+            }
+        }
+
+        if (buffer.Count > 0)
+        {
+            yield return buffer.ToArray();
         }
     }
 
