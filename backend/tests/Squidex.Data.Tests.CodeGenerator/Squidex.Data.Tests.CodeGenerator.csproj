@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-	<LangVersion>latest</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
-	<IsRoslynComponent>true</IsRoslynComponent>
-    <Nullable>enable</Nullable>
-	<LangVersion>latest</LangVersion>
-	<RootNamespace>Squidex</RootNamespace>
-	<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-  </PropertyGroup>
+ <PropertyGroup>
+   <TargetFramework>net10.0</TargetFramework>
+<LangVersion>latest</LangVersion>
+   <ImplicitUsings>enable</ImplicitUsings>
+<IsRoslynComponent>true</IsRoslynComponent>
+   <Nullable>enable</Nullable>
+<LangVersion>latest</LangVersion>
+<RootNamespace>Squidex</RootNamespace>
+<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+ </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Providers\**" />
     <EmbeddedResource Remove="Providers\**" />
